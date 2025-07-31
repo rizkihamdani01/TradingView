@@ -1,0 +1,73 @@
+
+//@version=5
+// ta.study(title="buy & sell signal", overlay=true)
+indicator(title='MyScriptindicator')
+lb=open
+ls=close
+float rate=(open+close)/2
+stochasticOP=ta.stoch(open,high,low,13)
+stochasticCL=ta.stoch(close,high,low,13)
+[macdLine, signalLine, histLine] = ta.macd(close, 13, 23, 11)
+blow=low
+
+int emaE1=input.int(title="Ema 1",  defval=21)
+int emaE2=input.int(title="Ema 2",defval=45)
+int emaE3=input.int(title="Ema 3",  defval=215)
+
+emaLow = ta.sma(blow,2)
+ema1 = ta.ema(close,2)
+ema2 = ta.ema(close,3)
+ema3 = ta.ema(close, 5)
+ema4 = ta.ema(close, 7)
+ema5 = ta.ema(close, 11)
+ema6 =ta.ema(close, 29)
+ema6a = ta.ema(rate, 9)
+ema69 = ta.ema(close, 69)
+ema121 = ta.ema(close, emaE1)
+ema122 = ta.ema(close, emaE2)
+ema123 = ta.ema(close, emaE3)
+
+plot(ema6a,"ema6a",#dd9a9a,1)
+// plot(ema69,"ema69",#9999ff,2)
+plot(ema121,"ema 1",#d7fcd4,1)
+plot(ema122,"ema 2",#076900,1)
+plot(ema123,"ema 3",#cc0000,1)
+// plot(series, title, color, linewidth, style, trackprice, transp, histbase, offset, join, editable, show_last, display)
+// plot(ema6,"aa",#dd9a9a,1)
+// plot(emaLow,"aa",#66ff5b,1)
+// plot(high,"hg",#cc0000,1)
+
+buySignalS = (ta.crossover(ema2, ema3) or ta.crossover(ema5, ema6)) and (stochasticCL>stochasticOP)
+buySignalmcd = (ta.crossover(ema2, ema3) or ta.crossover(ema5, ema6))   and (macdLine>signalLine) and ((macdLine-signalLine)>0.5)
+    
+// sellSignal = ta.crossunder(ema1, ema2)// and (stochasticCL<stochasticOP) and (close>=ema3)
+sellSignal = ta.crossunder(ema1, ema2) //and (ema6a<rate) 
+// buySignal2 = (high==close)
+// paluSignal = ((low==open) or (low==close) ) and (open<high) and (open!=close)
+// dropSignal = (high==open) and (low==close)
+// dojiSignal = (open==close)
+
+plotshape(series=buySignalmcd, title="buySignalmcd", style=shape.triangleup, location=location.belowbar, color=color.lime, text="M", size=size.tiny)
+plotshape(series=buySignalS, title="buySignalS", style=shape.triangleup, location=location.belowbar, color=color.lime, text="", size=size.tiny)
+
+plotshape(series=sellSignal, title="sellSignal", style=shape.triangledown, location=location.abovebar, color=color.red, text="", size=size.tiny)
+// plotshape(series=buySignal2, title="buySignal2", style=shape.circle, location=location.bottom, color=color.red, text="", size=size.tiny)
+// plotshape(series=paluSignal, title="sellSignal2", style=shape.circle, location=location.bottom, color=color.red, text="", size=size.tiny)
+// plotshape(series=dropSignal, title="dropSignal", style=shape.arrowdown, location=location.bottom, color=color.red, text="", size=size.tiny)
+// plotshape(series=dojiSignal, title="dojiSignal", style=shape.square, location=location.bottom, color=color.green, text="__", size=size.tiny)
+
+
+
+mysignal = ta.ema(close, emaE1) - ta.ema(close, emaE2)
+// barcolor(mysignal[0] > mysignal[1] ? color.green : color.red)
+source = close
+length = input.int(20)
+mult = input.float(2.0)
+basis = ta.sma(source, length)
+dev = mult * ta.stdev(source, length)
+upper = basis + dev
+lower = basis - dev
+plot(basis, "aa",#ff0000,2)
+p1 = plot(upper, "upper",color.blue,2)
+p2 = plot(lower, "lower",color.blue,2)
+fill(p1, p2, color=color.new(color.red, 95))
