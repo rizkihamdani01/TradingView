@@ -1,0 +1,102 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Gemini AI - PRO Fractal Vol Breakout + Full Dashboard System (Color Fixed)
+
+//@version=5
+indicator(title='[PRO] Fractal Vol Breakout + Advanced Dashboard', overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ==========================================
+// --- INPUT PARAMETERS ---
+// ==========================================
+rewardRatio = input.float(1.7, "Risk:Reward Ratio (Target TP)", minval=0.1, step=0.1)
+rsiLen      = input.int(14, "RSI Length")
+volMaLen    = input.int(20, "Volume MA Length")
+atrLen      = input.int(14, "ATR Length for Dashboard")
+
+// ==========================================
+// --- TECHNICAL CALCULATIONS ---
+// ==========================================
+// 1. MACD
+[macdLine, signalLine, _] = ta.macd(close, 12, 26, 9)
+is_macd_bull = macdLine > signalLine
+
+// 2. RSI, Volume, ATR
+rsiVal = ta.rsi(close, rsiLen)
+volAvg = ta.sma(volume, volMaLen)
+volPerc = (volume / volAvg) * 100 
+atrVal = ta.atr(atrLen)
+is_high_vol = volume > volAvg
+
+// 3. FRACTAL (Struktur S/R)
+is_top = high[4] < high[3] and high[3] < high[2] and high[2] > high[1] and high[1] > high[0]
+is_bot = low[4] > low[3]  and low[3] > low[2]  and low[2] < low[1]  and low[1] < low[0]
+
+var float res_price = na
+var float sup_price = na
+if is_top
+    res_price := high[2]
+if is_bot
+    sup_price := low[2]
+
+// ==========================================
+// --- SIGNAL LOGIC ---
+// ==========================================
+buy_condition  = ta.crossover(close, res_price) and is_high_vol and is_macd_bull and rsiVal > 60
+sell_condition = ta.crossunder(close, sup_price) and is_high_vol and not is_macd_bull and rsiVal < 40
+
+var int signal_state = 0 
+var float sl_level = na
+var float tp_level = na
+
+if buy_condition and signal_state != 1
+    signal_state := 1
+    sl_level := sup_price 
+    tp_level := close + ((close - sl_level) * rewardRatio)
+
+if sell_condition and signal_state != -1
+    signal_state := -1
+    sl_level := res_price
+    tp_level := close - ((sl_level - close) * rewardRatio)
+
+// ==========================================
+// --- VISUAL OUTPUT ---
+// ==========================================
+// Label Sinyal
+plotshape(buy_condition and signal_state[1] != 1, "BUY", shape.labelup, location.belowbar, color.lime, text="BUY", textcolor=color.black, size=size.small)
+plotshape(sell_condition and signal_state[1] != -1, "SELL", shape.labeldown, location.abovebar, color.red, text="SELL", textcolor=color.white, size=size.small)
+
+// Garis TP & SL (Horizontal)
+plot(signal_state != 0 ? tp_level : na, "Take Profit", color=color.new(color.lime, 0), style=plot.style_linebr, linewidth=2)
+plot(signal_state != 0 ? sl_level : na, "Stop Loss",    color=color.new(color.red, 0),  style=plot.style_linebr, linewidth=2)
+
+// Level S/R Fractal (Horizontal)
+plot(res_price, "Resistance", color=color.new(color.red, 60), style=plot.style_stepline)
+plot(sup_price, "Support",    color=color.new(color.blue, 60), style=plot.style_stepline)
+
+// ==========================================
+// --- ADVANCED DASHBOARD ---
+// ==========================================
+var table dash = table.new(position.top_right, 2, 5, bgcolor=color.new(color.black, 50), border_color=color.gray, border_width=1)
+
+if barstate.islast
+    // Header Status
+    table.cell(dash, 0, 0, "INDICATOR", text_color=color.white, bgcolor=color.new(color.gray, 30))
+    table.cell(dash, 1, 0, "VALUE", text_color=color.white, bgcolor=color.new(color.gray, 30))
+    
+    // RSI Row
+    table.cell(dash, 0, 1, "RSI (14)", text_color=color.white)
+    table.cell(dash, 1, 1, str.tostring(math.round(rsiVal, 2)), text_color=rsiVal > 60 ? color.lime : rsiVal < 40 ? color.red : color.yellow)
+    
+    // ATR Row
+    table.cell(dash, 0, 2, "ATR (Volatilitas)", text_color=color.white)
+    table.cell(dash, 1, 2, str.tostring(math.round(atrVal, syminfo.mintick > 0.01 ? 2 : 5)), text_color=color.aqua)
+    
+    // Volume Row
+    table.cell(dash, 0, 3, "Vol vs Avg %", text_color=color.white)
+    table.cell(dash, 1, 3, str.tostring(math.round(volPerc, 1)) + "%", text_color=volPerc > 100 ? color.lime : color.white)
+    
+    // Trend Status
+    table.cell(dash, 0, 4, "Market Trend", text_color=color.white)
+    table.cell(dash, 1, 4, signal_state == 1 ? "BULLISH" : signal_state == -1 ? "BEARISH" : "NEUTRAL", text_color=signal_state == 1 ? color.lime : signal_state == -1 ? color.red : color.white)
+
+// Background color highlight
+bgcolor(buy_condition ? color.new(color.lime, 90) : sell_condition ? color.new(color.red, 90) : na)
